@@ -1,0 +1,264 @@
+1. opengl을 사용할때 float를 명시해줘야 한다. 0.0, 1.0 등을 넣어줘야됨
+
+
+
+2. 유용한 수학함수
+pow(x, 0.5)
+log(x)
+exp(x)
+sin(x)
+abs(x)
+fract(x) -> 소숫점만 취함
+ceil(x) -> 올림
+floor(x) -> 내림
+sign -> 부호취득(-1, 1)
+mod(x, 0.5) -> x를 0.5로 나눈 나머지
+clamp(x, 0.0, 1.0) -> x값이 0과 1사이에 존재하도록 자름
+min(0.0, x)
+max(0.0, x)
+(GraphToy로 그래프를 시각화할 수 있다.)
+
+// Step은 0.5전까지 0을 반환한다.
+// 2차원, 3차원도 가능하다.
+float y = step(0.5, st.x);
+
+// 0.1에서 0.9사이의 x에 대하여 y가 점진적으로 증가해 1이된다.
+// 반대로 쓰면 1에서 0이 된다.
+vec2 bl = smoothstep(vec2(0.190,0.200),vec2(0.19,0.7),st);
+float y = smoothstep(0.1,0.9,st.x);
+float y = smoothstep(0.2,0.5,st.x) - smoothstep(0.5,0.8,st.x);
+
+3.
+vec4 vector;에서
+vector[0] = vector.r = vector.x = vector.s 와 같다.
+마찬가지로
+vector[0] = vector.g = vector.y = vector.t
+vector[0] = vector.b = vector.z = vector.p
+vector[0] = vector.w = vector.w = vector.q
+
+다음과 같이도 사용가능
+yellow.rg = vec2(1.0);
+yellow[2] = 0.0;
+magenta = yellow.rbg;
+
+
+
+4. 2색상을 섞는 법
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+uniform vec2 u_resolution;
+uniform float u_time;
+
+vec3 colorA = vec3(0.149,0.141,0.912);
+vec3 colorB = vec3(1.000,0.833,0.224);
+
+void main() {
+    vec3 color = vec3(0.0);
+
+    float pct = abs(sin(u_time));
+
+    // Mix uses pct (a value from 0-1) to
+    // mix the two colors
+    color = mix(colorA, colorB, pct);
+
+    gl_FragColor = vec4(color,1.0);
+}
+
+
+
+5. RGB에서 HSB로 바꾸는 법
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+uniform vec2 u_resolution;
+uniform float u_time;
+
+vec3 rgb2hsb( in vec3 c ){
+    vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+    vec4 p = mix(vec4(c.bg, K.wz),
+                 vec4(c.gb, K.xy),
+                 step(c.b, c.g));
+    vec4 q = mix(vec4(p.xyw, c.r),
+                 vec4(c.r, p.yzx),
+                 step(p.x, c.r));
+    float d = q.x - min(q.w, q.y);
+    float e = 1.0e-10;
+    return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)),
+                d / (q.x + e),
+                q.x);
+}
+
+//  Function from Iñigo Quiles
+//  https://www.shadertoy.com/view/MsS3Wc
+vec3 hsb2rgb( in vec3 c ){
+    vec3 rgb = clamp(abs(mod(c.x*6.0+vec3(0.0,4.0,2.0),
+                             6.0)-3.0)-1.0,
+                     0.0,
+                     1.0 );
+    rgb = rgb*rgb*(3.0-2.0*rgb);
+    return c.z * mix(vec3(1.0), rgb, c.y);
+}
+
+void main(){
+    vec2 st = gl_FragCoord.xy/u_resolution;
+    vec3 color = vec3(0.0);
+
+    // We map x (0.0 - 1.0) to the hue (0.0 - 1.0)
+    // And the y (0.0 - 1.0) to the brightness
+    color = hsb2rgb(vec3(st.x,1.0,st.y));
+
+    gl_FragColor = vec4(color,1.0);
+}
+
+
+
+6. HSB 색상/채도/명도
+빨주노초파남보
+밝기랑 비슷
+빨(1)->검정색(0), 주->검정색...
+
+
+
+7. 원 그리기
+float distance(float p0, float p1)
+float distance(vec2 p0, vec2 p1)  <- 두점사이의 거리
+
+float length(float x)  
+float length(vec2 x) <- 벡터의 크기를 계산해준다.
+
+(1)
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+uniform vec2 u_resolution;
+uniform vec2 u_mouse;
+uniform float u_time;
+
+void main(){
+	vec2 st = gl_FragCoord.xy/u_resolution;
+    float pct = 0.0;
+
+    // a. The DISTANCE from the pixel to the center
+    pct = distance(st,vec2(0.5));
+
+    // b. The LENGTH of the vector
+    //    from the pixel to the center
+    vec2 toCenter = vec2(0.5)-st;
+    pct = length(toCenter);
+
+    // c. The SQUARE ROOT of the vector
+    //    from the pixel to the center
+    vec2 tC = vec2(0.5)-st;
+    pct = sqrt(tC.x*tC.x+tC.y*tC.y);
+
+    vec3 color = vec3(pct);
+
+	gl_FragColor = vec4( color, 1.0 );
+}
+< 안은 검정색이고 갈수록 밝아지는 원
+
+(2)
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+uniform vec2 u_resolution;
+uniform vec2 u_mouse;
+uniform float u_time;
+
+float circle(in vec2 _st, in float _radius){
+    vec2 dist = _st-vec2(0.5);
+	//그냥 step을 사용하면 계단이 보인다.
+	return 1.-smoothstep(_radius-(_radius*0.01),
+                         _radius+(_radius*0.01),
+                         dot(dist,dist)*4.0);
+}
+
+void main(){
+	vec2 st = gl_FragCoord.xy/u_resolution.xy;
+	vec3 color = vec3(circle(st,0.9));
+	gl_FragColor = vec4( color, 1.0 );
+}
+<원은 흰색 바깥은 검정색
+
+
+
+
+8. 삼각형 만들기
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+#define PI 3.14159265359
+#define TWO_PI 6.28318530718
+
+uniform vec2 u_resolution;
+uniform vec2 u_mouse;
+uniform float u_time;
+
+// Reference to
+// http://thndl.com/square-shaped-shaders.html
+
+void main(){
+  vec2 st = gl_FragCoord.xy/u_resolution.xy;
+  st.x *= u_resolution.x/u_resolution.y;
+  vec3 color = vec3(0.0);
+  float d = 0.0;
+
+  // Remap the space to -1. to 1.
+  st = st *2.-1.;
+
+  // Number of sides of your shape
+  int N = 3;
+
+  // Angle and radius from the current pixel
+  float a = atan(st.x,st.y)+PI;
+  float r = TWO_PI/float(N);
+
+  // Shaping function that modulate the distance
+  d = cos(floor(.5+a/r)*r-a)*length(st);
+
+  color = vec3(1.0-smoothstep(.4,.41,d));
+  // color = vec3(d);
+
+  gl_FragColor = vec4(color,1.0);
+}
+
+
+
+
+9. random 함수
+rand(x)는 fract(sin(x) * 100000.0)과 비슷하다.
+이는 -1.5707과 1.5707에서 항상 0값을 보이는 것을 관찰할 수 있다.
+
+위로 점들이 밀집해있음(1에 가까운 값이 더 잘나오도록 설계)
+y = sqrt(rand(x));
+아래로 점들이 밀집해있음(0에 가까운 값이 더 잘 나오도록 설계)
+y = pow(rand(x),5.);
+
+- 2D랜덤함수
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+uniform vec2 u_resolution;
+uniform vec2 u_mouse;
+uniform float u_time;
+
+float random (vec2 st) {
+    return fract(sin(dot(st.xy,
+                         vec2(12.9898,78.233)))*
+        43758.5453123);
+}
+
+void main() {
+    vec2 st = gl_FragCoord.xy/u_resolution.xy;
+
+    float rnd = random( st );
+
+    gl_FragColor = vec4(vec3(rnd),1.0);
+}
